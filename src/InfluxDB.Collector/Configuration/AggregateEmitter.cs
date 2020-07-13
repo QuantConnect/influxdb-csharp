@@ -19,5 +19,11 @@ namespace InfluxDB.Collector.Configuration
             foreach (var emitter in _emitters)
                 emitter.Emit(points);
         }
+
+        public void Emit(PointData point)
+        {
+            foreach (var emitter in _emitters)
+                emitter.Emit(point);
+        }
     }
 }

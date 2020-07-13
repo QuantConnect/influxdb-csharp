@@ -18,10 +18,20 @@ namespace InfluxDB.Collector.Pipeline
 
         protected override void Emit(PointData[] points)
         {
-            foreach (var point in points)
-                _enricher.Enrich(point);
+            if (_enricher != null)
+            {
+                foreach (var point in points)
+                    _enricher.Enrich(point);
+            }
 
             _emitter.Emit(points);
+        }
+
+        protected override void Emit(PointData point)
+        {
+            _enricher?.Enrich(point);
+
+            _emitter.Emit(point);
         }
 
         protected override void Dispose(bool disposing)

@@ -24,6 +24,11 @@ namespace InfluxDB.Collector.Configuration
 
         public IPointEnricher CreateEnricher()
         {
+            if (_tags.Count == 0)
+            {
+                // if there are not tags makes no sense to enrich the dps so we skip
+                return null;
+            }
             return new DictionaryPointEnricher(_tags);
         }
     }

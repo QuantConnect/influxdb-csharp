@@ -14,126 +14,68 @@
 // limitations under the License.
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
 using InfluxDB.Collector.Diagnostics;
 
 namespace InfluxDB.Collector.Platform
 {
     class PortableTimer : IDisposable
     {
-        readonly object _stateLock = new object();
-
-        readonly Func<CancellationToken, Task> _onTick;
-        readonly CancellationTokenSource _cancel = new CancellationTokenSource();
-
-#if THREADING_TIMER
-        readonly Timer _timer;
-#endif
-
-        bool _running;
         bool _disposed;
+        TimeSpan _interval;
+        readonly List<Thread> _threads;
+        readonly CancellationTokenSource _cancel;
+        readonly Action<CancellationToken> _onTick;
 
-        public PortableTimer(Func<CancellationToken, Task> onTick)
+        public PortableTimer(Action<CancellationToken> onTick, TimeSpan interval, int emittersCount = 4)
         {
-            if (onTick == null) throw new ArgumentNullException(nameof(onTick));
+            _interval = interval;
+            _cancel = new CancellationTokenSource();
+            _threads = new List<Thread>(emittersCount);
+            _onTick = onTick ?? throw new ArgumentNullException(nameof(onTick));
 
-            _onTick = onTick;
-
-#if THREADING_TIMER
-            _timer = new Timer(_ => OnTick(), null, Timeout.Infinite, Timeout.Infinite);
-#endif
-        }
-
-        public void Start(TimeSpan interval)
-        {
-            if (interval < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(interval));
-
-            lock (_stateLock)
+            for (var i = 0; i < emittersCount; i++)
             {
-                if (_disposed)
-                    throw new ObjectDisposedException(nameof(PortableTimer));
-
-#if THREADING_TIMER
-                _timer.Change(interval, Timeout.InfiniteTimeSpan);
-#else
-                Task.Delay(interval, _cancel.Token)
-                    .ContinueWith(
-                        _ => OnTick(),
-                        CancellationToken.None,
-                        TaskContinuationOptions.DenyChildAttach,
-                        TaskScheduler.Default);
-#endif
+                _threads.Add(new Thread(OnTick) { IsBackground = true });
+                _threads[i].Start();
             }
         }
 
-        async void OnTick()
+        void OnTick()
         {
-            try
+            while (!_cancel.IsCancellationRequested)
             {
-                lock (_stateLock)
+                try
                 {
-                    if (_disposed)
+                    _cancel.Token.WaitHandle.WaitOne(_interval);
+                    if (!_cancel.IsCancellationRequested)
                     {
-                        return;
+                        _onTick(_cancel.Token);
                     }
-
-                    // There's a little bit of raciness here, but it's needed to support the
-                    // current API, which allows the tick handler to reenter and set the next interval.
-
-                    if (_running)
-                    {
-                        Monitor.Wait(_stateLock);
-
-                        if (_disposed)
-                        {
-                            return;
-                        }
-                    }
-
-                    _running = true;
                 }
-
-                if (!_cancel.Token.IsCancellationRequested)
+                catch (OperationCanceledException tcx)
                 {
-                    await _onTick(_cancel.Token);
+                    CollectorLog.ReportError("The timer was canceled during invocation", tcx);
                 }
-            }
-            catch (OperationCanceledException tcx)
-            {
-                CollectorLog.ReportError("The timer was canceled during invocation", tcx);
-            }
-            finally
-            {
-                lock (_stateLock)
+                catch (Exception exception)
                 {
-                    _running = false;
-                    Monitor.PulseAll(_stateLock);
+                    CollectorLog.ReportError("Unknown exception in timer", exception);
                 }
             }
         }
 
         public void Dispose()
         {
-            _cancel.Cancel();
-
-            lock (_stateLock)
+            if (_disposed)
             {
-                if (_disposed)
-                {
-                    return;
-                }
-
-                while (_running)
-                {
-                    Monitor.Wait(_stateLock);
-                }
-
-#if THREADING_TIMER
-                _timer.Dispose();
-#endif
-
-                _disposed = true;
+                return;
+            }
+            _cancel.Cancel();
+            _disposed = true;
+            foreach (var thread in _threads)
+            {
+                thread.Join(1000);
             }
         }
     }

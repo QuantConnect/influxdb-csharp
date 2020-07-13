@@ -41,7 +41,7 @@ namespace InfluxDB.Collector
             try
             {
                 var point = new PointData(measurement, fields, tags, timestamp ?? _timestampSource.GetUtcNow());
-                Emit(new[] { point });
+                Emit(point);
             }
             catch (Exception ex)
             {
@@ -54,6 +54,12 @@ namespace InfluxDB.Collector
             Emit(points);
         }
 
+        void IPointEmitter.Emit(PointData point)
+        {
+            Emit(point);
+        }
+
         protected abstract void Emit(PointData[] points);
+        protected abstract void Emit(PointData point);
     }
 }

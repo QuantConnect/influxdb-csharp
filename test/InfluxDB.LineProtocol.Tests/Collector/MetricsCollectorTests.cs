@@ -52,7 +52,6 @@ namespace InfluxDB.LineProtocol.Tests.Collector
                 .CreateCollector();
 
             collector.Increment("m");
-            written.Task.Wait();
 
             collector.Dispose();
         }

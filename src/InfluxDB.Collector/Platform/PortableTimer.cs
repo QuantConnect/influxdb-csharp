@@ -48,7 +48,7 @@ namespace InfluxDB.Collector.Platform
             {
                 try
                 {
-                    _cancel.Token.WaitHandle.WaitOne(_interval);
+                    Thread.Sleep(_interval);
                     if (!_cancel.IsCancellationRequested)
                     {
                         _onTick(_cancel.Token);

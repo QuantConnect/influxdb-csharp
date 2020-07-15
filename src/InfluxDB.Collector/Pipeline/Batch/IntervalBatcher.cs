@@ -14,7 +14,7 @@ namespace InfluxDB.Collector.Pipeline.Batch
         readonly int? _maxBatchSize;
         readonly PortableTimer _timer;
         readonly IPointEmitter _parent;
-        private Queue<PointData> _queue;
+        private volatile Queue<PointData> _queue;
 
         public IntervalBatcher(TimeSpan interval, int? maxBatchSize, IPointEmitter parent)
         {
@@ -51,6 +51,7 @@ namespace InfluxDB.Collector.Pipeline.Batch
                 int count;
                 do
                 {
+                    var newQueue = new Queue<PointData>();
                     Queue<PointData> batch;
                     lock (_queueLock)
                     {
@@ -61,10 +62,10 @@ namespace InfluxDB.Collector.Pipeline.Batch
                         }
 
                         batch = _queue;
-                        _queue = new Queue<PointData>();
+                        _queue = newQueue;
                     }
 
-                    if (batch.Count > _maxBatchSize * 5)
+                    if (_maxBatchSize != null && batch.Count > _maxBatchSize * 1000)
                     {
                         CollectorLog.ReportError($"InfluxDB.IntervalBatcher(): OnTick() Batch.Count: {batch.Count} lagging", null);
                     }

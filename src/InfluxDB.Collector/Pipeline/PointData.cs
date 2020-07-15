@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace InfluxDB.Collector.Pipeline
 {
@@ -13,16 +12,16 @@ namespace InfluxDB.Collector.Pipeline
 
         public PointData(
             string measurement,
-            IReadOnlyDictionary<string, object> fields,
-            IReadOnlyDictionary<string, string> tags = null,
+            Dictionary<string, object> fields,
+            Dictionary<string, string> tags = null,
             DateTime? utcTimestamp = null)
         {
             if (measurement == null) throw new ArgumentNullException(nameof(measurement));
             if (fields == null) throw new ArgumentNullException(nameof(fields));
+
             Measurement = measurement;
-            Fields = fields.ToDictionary(kv => kv.Key, kv => kv.Value);
-            if (tags != null)
-                Tags = tags.ToDictionary(kv => kv.Key, kv => kv.Value);
+            Fields = fields;
+            Tags = tags;
             UtcTimestamp = utcTimestamp;
         }
     }

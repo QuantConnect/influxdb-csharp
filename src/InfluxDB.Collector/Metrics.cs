@@ -18,22 +18,22 @@ namespace InfluxDB.Collector
             }
         }
 
-        public static void Increment(string measurement, long value = 1, IReadOnlyDictionary<string, string> tags = null)
+        public static void Increment(string measurement, long value = 1, Dictionary<string, string> tags = null)
         {
             Collector.Increment(measurement, value, tags);
         }
 
-        public static void Measure(string measurement, object value, IReadOnlyDictionary<string, string> tags = null)
+        public static void Measure(string measurement, object value, Dictionary<string, string> tags = null)
         {
             Collector.Measure(measurement, value, tags);
         }
 
-        public static IDisposable Time(string measurement, IReadOnlyDictionary<string, string> tags = null)
+        public static IDisposable Time(string measurement, Dictionary<string, string> tags = null)
         {
             return Collector.Time(measurement, tags);
         }
 
-        public static void Write(string measurement, IReadOnlyDictionary<string, object> fields, IReadOnlyDictionary<string, string> tags = null)
+        public static void Write(string measurement, Dictionary<string, object> fields, Dictionary<string, string> tags = null)
         {
             Collector.Write(measurement, fields, tags);
         }

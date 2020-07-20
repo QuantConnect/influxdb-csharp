@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using InfluxDB.Collector.Diagnostics;
 using InfluxDB.LineProtocol.Client;
 using InfluxDB.LineProtocol.Payload;
@@ -22,16 +23,16 @@ namespace InfluxDB.Collector.Pipeline.Emit
 
         public void Emit(PointData[] points)
         {
-            var payload = new LineProtocolPayload();
-
-            foreach (var point in points)
-            {
-                payload.Add(new LineProtocolPoint(point.Measurement, point.Fields, point.Tags, point.UtcTimestamp));
-            }
+            var payload = new LineProtocolPayload(points.Select(point => new LineProtocolPoint(point.Measurement, point.Fields, point.Tags, point.UtcTimestamp)));
 
             var influxResult = _client.WriteAsync(payload).Result;
             if (!influxResult.Success)
                 CollectorLog.ReportError(influxResult.ErrorMessage, null);
+        }
+
+        public void Emit(PointData point)
+        {
+            throw new NotImplementedException();
         }
     }
 }

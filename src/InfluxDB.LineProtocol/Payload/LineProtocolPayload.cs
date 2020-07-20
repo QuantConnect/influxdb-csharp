@@ -1,17 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace InfluxDB.LineProtocol.Payload
 {
     public class LineProtocolPayload
     {
-        readonly List<LineProtocolPoint> _points = new List<LineProtocolPoint>();
+        IEnumerable<LineProtocolPoint> _points;
+
+        public LineProtocolPayload(IEnumerable<LineProtocolPoint> points = null)
+        {
+            _points = points ?? Enumerable.Empty<LineProtocolPoint>();
+        }
 
         public void Add(LineProtocolPoint point)
         {
             if (point == null) throw new ArgumentNullException(nameof(point));
-            _points.Add(point);
+            _points = _points.Concat(new []{ point });
         }
 
         public void Format(TextWriter textWriter)

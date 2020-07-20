@@ -44,30 +44,32 @@ namespace InfluxDB.LineProtocol.Client
             Precision precision,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var endpoint = $"write?db={Uri.EscapeDataString(_database)}";
+            var stringBuilder = new StringBuilder(50);
+            stringBuilder.Append($"write?db={Uri.EscapeDataString(_database)}");
             if (!string.IsNullOrWhiteSpace(_retentionPolicy))
-                endpoint += $"&rp={Uri.EscapeDataString(_retentionPolicy)}";
+                stringBuilder.Append($"&rp={Uri.EscapeDataString(_retentionPolicy)}");
             if (!string.IsNullOrEmpty(_username))
-                endpoint += $"&u={Uri.EscapeDataString(_username)}&p={Uri.EscapeDataString(_password)}";
+                stringBuilder.Append($"&u={Uri.EscapeDataString(_username)}&p={Uri.EscapeDataString(_password)}");
 
             switch (precision)
             {
                 case Precision.Microseconds:
-                    endpoint += "&precision=u";
+                    stringBuilder.Append("&precision=u");
                     break;
                 case Precision.Milliseconds:
-                    endpoint += "&precision=ms";
+                    stringBuilder.Append("&precision=ms");
                     break;
                 case Precision.Seconds:
-                    endpoint += "&precision=s";
+                    stringBuilder.Append("&precision=s");
                     break;
                 case Precision.Minutes:
-                    endpoint += "&precision=m";
+                    stringBuilder.Append("&precision=m");
                     break;
                 case Precision.Hours:
-                    endpoint += "&precision=h";
+                    stringBuilder.Append("&precision=h");
                     break;
             }
+            var endpoint = stringBuilder.ToString();
 
             HttpContent content;
 

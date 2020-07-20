@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using InfluxDB.Collector.Diagnostics;
 using InfluxDB.Collector.Platform;
 using InfluxDB.Collector.Util;
@@ -10,33 +9,28 @@ namespace InfluxDB.Collector.Pipeline.Batch
 {
     class IntervalBatcher : IPointEmitter, IDisposable
     {
-        readonly object _queueLock = new object();
-        Queue<PointData> _queue = new Queue<PointData>();
-
-        readonly TimeSpan _interval;
-        readonly int? _maxBatchSize;
-        readonly IPointEmitter _parent;
-
-        readonly object _stateLock = new object();
-        readonly PortableTimer _timer;
         bool _unloading;
-        bool _started;
+        object _queueLock;
+        readonly int? _maxBatchSize;
+        readonly PortableTimer _timer;
+        readonly IPointEmitter _parent;
+        private volatile Queue<PointData> _queue;
 
         public IntervalBatcher(TimeSpan interval, int? maxBatchSize, IPointEmitter parent)
         {
             _parent = parent;
-            _interval = interval;
+            _queueLock = new object();
             _maxBatchSize = maxBatchSize;
-            _timer = new PortableTimer(cancel => OnTick());
+            _queue = new Queue<PointData>();
+            _timer = new PortableTimer(cancel => OnTick(), interval);
         }
 
         void CloseAndFlush()
         {
-            lock (_stateLock)
+            lock (_queueLock)
             {
-                if (!_started || _unloading)
+                if (_unloading)
                     return;
-
                 _unloading = true;
             }
 
@@ -50,64 +44,71 @@ namespace InfluxDB.Collector.Pipeline.Batch
             CloseAndFlush();
         }
 
-        Task OnTick()
+        void OnTick()
         {
             try
             {
-                Queue<PointData> batch;
-                lock (_queueLock)
+                int count;
+                do
                 {
-                    if (_queue.Count == 0)
-                        return Task.Delay(0);
-
-                    batch = _queue;
-                    _queue = new Queue<PointData>();
-                }
-
-                if (_maxBatchSize == null || batch.Count <= _maxBatchSize.Value)
-                {
-                    _parent.Emit(batch.ToArray());
-                }
-                else
-                {
-                    foreach (var chunk in batch.Batch(_maxBatchSize.Value))
+                    var newQueue = new Queue<PointData>();
+                    Queue<PointData> batch;
+                    lock (_queueLock)
                     {
-                        _parent.Emit(chunk.ToArray());
+                        if (_queue.Count == 0)
+                        {
+                            // short cut
+                            return;
+                        }
+
+                        batch = _queue;
+                        _queue = newQueue;
                     }
-                }
+
+                    if (_maxBatchSize != null && batch.Count > _maxBatchSize * 1000)
+                    {
+                        CollectorLog.ReportError($"InfluxDB.IntervalBatcher(): OnTick() Batch.Count: {batch.Count} lagging", null);
+                    }
+
+                    if (_maxBatchSize == null || batch.Count <= _maxBatchSize.Value)
+                    {
+                        _parent.Emit(batch.ToArray());
+                    }
+                    else
+                    {
+                        foreach (var chunk in batch.Batch(_maxBatchSize.Value))
+                        {
+                            _parent.Emit(chunk.ToArray());
+                        }
+                    }
+
+                    lock (_queueLock)
+                    {
+                        count = _queue.Count;
+                    }
+                    // if there is enough work let's directly loop again
+                } while (_maxBatchSize.HasValue && count >= _maxBatchSize.Value);
             }
             catch (Exception ex)
             {
                 CollectorLog.ReportError("Failed to emit metrics batch", ex);
             }
-            finally
-            {
-                lock (_stateLock)
-                {
-                    if (!_unloading)
-                        _timer.Start(_interval);
-                }
-            }
-
-            return Task.Delay(0);
         }
 
         public void Emit(PointData[] points)
         {
-            lock (_stateLock)
-            {
-                if (_unloading) return;
-                if (!_started)
-                {
-                    _started = true;
-                    _timer.Start(TimeSpan.Zero);
-                }
-            }
-
             lock (_queueLock)
             {
-                foreach(var point in points)
+                foreach (var point in points)
                     _queue.Enqueue(point);
+            }
+        }
+
+        public void Emit(PointData point)
+        {
+            lock (_queueLock)
+            {
+                _queue.Enqueue(point);
             }
         }
     }

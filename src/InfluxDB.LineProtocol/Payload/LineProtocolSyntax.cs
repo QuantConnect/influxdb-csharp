@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Text;
 
 namespace InfluxDB.LineProtocol.Payload
 {
@@ -28,10 +29,27 @@ namespace InfluxDB.LineProtocol.Payload
         public static string EscapeName(string nameOrKey)
         {
             if (nameOrKey == null) throw new ArgumentNullException(nameof(nameOrKey));
-            return nameOrKey
-                .Replace("=", "\\=")
-                .Replace(" ", "\\ ")
-                .Replace(",", "\\,");
+
+            var stringBuilder = new StringBuilder(nameOrKey.Length);
+            foreach (var character in nameOrKey)
+            {
+                switch (character)
+                {
+                    case '=':
+                        stringBuilder.Append("\\=");
+                        break;
+                    case ' ':
+                        stringBuilder.Append("\\ ");
+                        break;
+                    case ',':
+                        stringBuilder.Append("\\,");
+                        break;
+                    default:
+                        stringBuilder.Append(character);
+                        break;
+                }
+            }
+            return stringBuilder.ToString();
         }
 
         public static string FormatValue(object value)

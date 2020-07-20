@@ -9,17 +9,17 @@ namespace InfluxDB.Collector
     {
         readonly Util.ITimestampSource _timestampSource = new Util.PseudoHighResTimestampSource();
 
-        public void Increment(string measurement, long count = 1, IReadOnlyDictionary<string, string> tags = null)
+        public void Increment(string measurement, long count = 1, Dictionary<string, string> tags = null)
         {
             Write(measurement, new Dictionary<string, object> { { "count", count } }, tags);
         }
 
-        public void Measure(string measurement, object value, IReadOnlyDictionary<string, string> tags = null)
+        public void Measure(string measurement, object value, Dictionary<string, string> tags = null)
         {
             Write(measurement, new Dictionary<string, object> { { "value", value } }, tags);
         }
 
-        public IDisposable Time(string measurement, IReadOnlyDictionary<string, string> tags = null)
+        public IDisposable Time(string measurement, Dictionary<string, string> tags = null)
         {
             return new StopwatchTimer(this, measurement, tags);
         }
@@ -36,12 +36,12 @@ namespace InfluxDB.Collector
 
         protected virtual void Dispose(bool disposing) { }
 
-        public void Write(string measurement, IReadOnlyDictionary<string, object> fields, IReadOnlyDictionary<string, string> tags = null, DateTime? timestamp = null)
+        public void Write(string measurement, Dictionary<string, object> fields, Dictionary<string, string> tags = null, DateTime? timestamp = null)
         {
             try
             {
                 var point = new PointData(measurement, fields, tags, timestamp ?? _timestampSource.GetUtcNow());
-                Emit(new[] { point });
+                Emit(point);
             }
             catch (Exception ex)
             {
@@ -54,6 +54,12 @@ namespace InfluxDB.Collector
             Emit(points);
         }
 
+        void IPointEmitter.Emit(PointData point)
+        {
+            Emit(point);
+        }
+
         protected abstract void Emit(PointData[] points);
+        protected abstract void Emit(PointData point);
     }
 }

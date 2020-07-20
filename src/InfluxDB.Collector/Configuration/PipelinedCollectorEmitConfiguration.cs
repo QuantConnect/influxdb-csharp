@@ -20,12 +20,12 @@ namespace InfluxDB.Collector.Configuration
             _configuration = configuration;
         }
 
-        public override CollectorConfiguration InfluxDB(Uri serverBaseAddress, string database, string username = null, string password = null, string retentionPolicy = null)
+        public override CollectorConfiguration InfluxDB(Uri serverBaseAddress, string database, string username = null, string password = null, bool enableCompression = false, string retentionPolicy = null)
         {
             if (string.Compare(serverBaseAddress.Scheme, "udp", ignoreCase: true) == 0)
                 _client = new LineProtocolUdpClient(serverBaseAddress, database, username, password, retentionPolicy);
             else
-                _client = new LineProtocolClient(serverBaseAddress, database, username, password, false, retentionPolicy);
+                _client = new LineProtocolClient(serverBaseAddress, database, username, password, enableCompression, retentionPolicy);
             return _configuration;
         }
 

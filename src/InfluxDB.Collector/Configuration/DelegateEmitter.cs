@@ -17,5 +17,10 @@ namespace InfluxDB.Collector.Configuration
         {
             _emitter(points);
         }
+
+        public void Emit(PointData point)
+        {
+            _emitter(new [] { point });
+        }
     }
 }

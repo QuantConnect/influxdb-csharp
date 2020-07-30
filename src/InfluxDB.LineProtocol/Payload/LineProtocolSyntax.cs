@@ -30,26 +30,41 @@ namespace InfluxDB.LineProtocol.Payload
         {
             if (nameOrKey == null) throw new ArgumentNullException(nameof(nameOrKey));
 
-            var stringBuilder = new StringBuilder(nameOrKey.Length);
-            foreach (var character in nameOrKey)
+            StringBuilder stringBuilder = null;
+            for (var i = 0; i < nameOrKey.Length; i++)
             {
-                switch (character)
+                switch (nameOrKey[i])
                 {
                     case '=':
+                        if (stringBuilder == null)
+                        {
+                            stringBuilder = new StringBuilder(nameOrKey.Length);
+                            stringBuilder.Append(nameOrKey.Substring(0, i));
+                        }
                         stringBuilder.Append("\\=");
                         break;
                     case ' ':
+                        if (stringBuilder == null)
+                        {
+                            stringBuilder = new StringBuilder(nameOrKey.Length);
+                            stringBuilder.Append(nameOrKey.Substring(0, i));
+                        }
                         stringBuilder.Append("\\ ");
                         break;
                     case ',':
+                        if (stringBuilder == null)
+                        {
+                            stringBuilder = new StringBuilder(nameOrKey.Length);
+                            stringBuilder.Append(nameOrKey.Substring(0, i));
+                        }
                         stringBuilder.Append("\\,");
                         break;
                     default:
-                        stringBuilder.Append(character);
+                        stringBuilder?.Append(nameOrKey[i]);
                         break;
                 }
             }
-            return stringBuilder.ToString();
+            return stringBuilder == null ? nameOrKey : stringBuilder.ToString();
         }
 
         public static string FormatValue(object value)

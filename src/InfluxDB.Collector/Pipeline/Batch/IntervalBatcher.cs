@@ -76,10 +76,7 @@ namespace InfluxDB.Collector.Pipeline.Batch
                     }
                     else
                     {
-                        foreach (var chunk in batch.Batch(_maxBatchSize.Value))
-                        {
-                            _parent.Emit(chunk.ToArray());
-                        }
+                        batch.Batch(_maxBatchSize.Value, _parent.Emit);
                     }
 
                     lock (_queueLock)

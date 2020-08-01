@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Text;
+using System.IO;
 
 namespace InfluxDB.LineProtocol.Payload
 {
@@ -26,45 +26,28 @@ namespace InfluxDB.LineProtocol.Payload
             { typeof(TimeSpan), FormatTimespan }
         };
 
-        public static string EscapeName(string nameOrKey)
+        public static void EscapeName(string nameOrKey, TextWriter textWriter)
         {
             if (nameOrKey == null) throw new ArgumentNullException(nameof(nameOrKey));
 
-            StringBuilder stringBuilder = null;
             for (var i = 0; i < nameOrKey.Length; i++)
             {
                 switch (nameOrKey[i])
                 {
                     case '=':
-                        if (stringBuilder == null)
-                        {
-                            stringBuilder = new StringBuilder(nameOrKey.Length);
-                            stringBuilder.Append(nameOrKey.Substring(0, i));
-                        }
-                        stringBuilder.Append("\\=");
+                        textWriter.Write("\\=");
                         break;
                     case ' ':
-                        if (stringBuilder == null)
-                        {
-                            stringBuilder = new StringBuilder(nameOrKey.Length);
-                            stringBuilder.Append(nameOrKey.Substring(0, i));
-                        }
-                        stringBuilder.Append("\\ ");
+                        textWriter.Write("\\ ");
                         break;
                     case ',':
-                        if (stringBuilder == null)
-                        {
-                            stringBuilder = new StringBuilder(nameOrKey.Length);
-                            stringBuilder.Append(nameOrKey.Substring(0, i));
-                        }
-                        stringBuilder.Append("\\,");
+                        textWriter.Write("\\,");
                         break;
                     default:
-                        stringBuilder?.Append(nameOrKey[i]);
+                        textWriter.Write(nameOrKey[i]);
                         break;
                 }
             }
-            return stringBuilder == null ? nameOrKey : stringBuilder.ToString();
         }
 
         public static string FormatValue(object value)

@@ -7,15 +7,15 @@ namespace InfluxDB.LineProtocol.Payload
 {
     public class LineProtocolPoint
     {
-        public string Measurement { get; }
-        public IReadOnlyDictionary<string, object> Fields { get; }
-        public IReadOnlyDictionary<string, string> Tags { get; }
-        public DateTime? UtcTimestamp { get; }
-        
+        private string _measurement;
+        private DateTime? _utcTimestamp;
+        private Dictionary<string, string> _tags;
+        private Dictionary<string, object> _fields;
+
         public LineProtocolPoint(
             string measurement,
-            IReadOnlyDictionary<string, object> fields,
-            IReadOnlyDictionary<string, string> tags = null,
+            Dictionary<string, object> fields,
+            Dictionary<string, string> tags = null,
             DateTime? utcTimestamp = null)
         {
             if (string.IsNullOrEmpty(measurement)) throw new ArgumentException("A measurement name must be specified");
@@ -24,44 +24,52 @@ namespace InfluxDB.LineProtocol.Payload
             if (utcTimestamp != null && utcTimestamp.Value.Kind != DateTimeKind.Utc)
                 throw new ArgumentException("Timestamps must be specified as UTC");
 
-            Measurement = measurement;
-            Fields = fields;
-            Tags = tags;
-            UtcTimestamp = utcTimestamp;
+            _measurement = measurement;
+            _fields = fields;
+            _tags = tags;
+            _utcTimestamp = utcTimestamp;
         }
 
         public void Format(TextWriter textWriter)
         {
             if (textWriter == null) throw new ArgumentNullException(nameof(textWriter));
 
-            textWriter.Write(LineProtocolSyntax.EscapeName(Measurement));
+            LineProtocolSyntax.EscapeName(_measurement, textWriter);
 
-            if (Tags != null)
+            if (_tags != null)
             {
-                var enumerable = Tags.Count == 1
-                    ? (IEnumerable<KeyValuePair<string, string>>) Tags
-                    : Tags.OrderBy(t => t.Key);
+                var enumerable = _tags.Count == 1
+                    ? (IEnumerable<KeyValuePair<string, string>>) _tags
+                    : _tags.OrderBy(t => t.Key);
 
                 foreach (var t in enumerable)
                 {
                     if (string.IsNullOrEmpty(t.Key)) throw new ArgumentException("Tags must have non-empty names");
 
-                    textWriter.Write($",{LineProtocolSyntax.EscapeName(t.Key)}={LineProtocolSyntax.EscapeName(t.Value)}");
+                    textWriter.Write(',');
+                    LineProtocolSyntax.EscapeName(t.Key, textWriter);
+                    textWriter.Write('=');
+                    LineProtocolSyntax.EscapeName(t.Value, textWriter);
                 }
             }
 
             var fieldDelim = ' ';
-            foreach (var f in Fields)
+            foreach (var f in _fields)
             {
                 if (string.IsNullOrEmpty(f.Key)) throw new ArgumentException("Fields must have non-empty names");
 
-                textWriter.Write($"{fieldDelim}{LineProtocolSyntax.EscapeName(f.Key)}={LineProtocolSyntax.FormatValue(f.Value)}");
+                textWriter.Write(fieldDelim);
+                LineProtocolSyntax.EscapeName(f.Key, textWriter);
+                textWriter.Write('=');
+                textWriter.Write(LineProtocolSyntax.FormatValue(f.Value));
+
                 fieldDelim = ',';
             }
 
-            if (UtcTimestamp != null)
+            if (_utcTimestamp != null)
             {
-                textWriter.Write($" {LineProtocolSyntax.FormatTimestamp(UtcTimestamp.Value)}");
+                textWriter.Write(' ');
+                textWriter.Write(LineProtocolSyntax.FormatTimestamp(_utcTimestamp.Value));
             }
         }
     }

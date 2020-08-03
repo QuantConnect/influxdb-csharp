@@ -30,7 +30,12 @@ namespace InfluxDB.LineProtocol.Client
 
             payload.Format(stringWriter);
 
-            return OnSendAsync(stringWriter.ToString(), Precision.Nanoseconds, cancellationToken);
+            return WriteAsync(stringWriter.ToString(), cancellationToken);
+        }
+
+        public Task<LineProtocolWriteResult> WriteAsync(string payload, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return OnSendAsync(payload, Precision.Nanoseconds, cancellationToken);
         }
 
         public Task<LineProtocolWriteResult> SendAsync(LineProtocolWriter lineProtocolWriter, CancellationToken cancellationToken = default(CancellationToken))

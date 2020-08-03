@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using InfluxDB.Collector.Pipeline;
+using InfluxDB.LineProtocol.Payload;
 
 namespace InfluxDB.Collector.Configuration
 {
@@ -14,13 +15,13 @@ namespace InfluxDB.Collector.Configuration
             _emitters = emitters;
         }
 
-        public void Emit(PointData[] points)
+        public void Emit(IPointData[] points)
         {
             foreach (var emitter in _emitters)
                 emitter.Emit(points);
         }
 
-        public void Emit(PointData point)
+        public void Emit(IPointData point)
         {
             foreach (var emitter in _emitters)
                 emitter.Emit(point);

@@ -31,10 +31,10 @@ namespace Sample
                 Metrics.Increment("iterations");
 
                 Metrics.Write("cpu_time",
-                    new Dictionary<string, object>
+                    new[]
                     {
-                        { "value", process.TotalProcessorTime.TotalMilliseconds },
-                        { "user", process.UserProcessorTime.TotalMilliseconds }
+                        new KeyValuePair<string, object>("value", process.TotalProcessorTime.TotalMilliseconds),
+                        new KeyValuePair<string, object>("user", process.UserProcessorTime.TotalMilliseconds)
                     });
 
                 Metrics.Measure("working_set", process.WorkingSet64);

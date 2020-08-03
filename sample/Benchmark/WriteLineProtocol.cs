@@ -32,15 +32,15 @@ namespace Benchmark
 
             foreach (var point in data)
             {
-                payload.Add(new LineProtocolPoint(
+                payload.Add(new DataPoint(
                     "example",
-                    new Dictionary<string, object>
+                    new[]
                     {
-                        {"value", point.value}
+                        new KeyValuePair<string, object>("value", point.value) 
                     },
-                    new Dictionary<string, string>
+                    new[]
                     {
-                        {"colour", point.colour}
+                        new KeyValuePair<string, string>("colour", point.colour)
                     },
                     point.timestamp
                 ));
@@ -94,6 +94,22 @@ namespace Benchmark
             }
 
             return lines.ToString();
+        }
+
+        private class DataPoint : IPointData
+        {
+            public DataPoint(string measurement, KeyValuePair<string, object>[] fields, KeyValuePair<string, string>[] tags, DateTime? utcTimestamp)
+            {
+                Measurement = measurement;
+                Fields = fields;
+                Tags = tags;
+                UtcTimestamp = utcTimestamp;
+            }
+
+            public string Measurement { get; }
+            public DateTime? UtcTimestamp { get; }
+            public KeyValuePair<string, string>[] Tags { get; set; }
+            public KeyValuePair<string, object>[] Fields { get; }
         }
     }
 }

@@ -1,12 +1,14 @@
-﻿namespace InfluxDB.Collector.Pipeline
+﻿using InfluxDB.LineProtocol.Payload;
+
+namespace InfluxDB.Collector.Pipeline
 {
     class NullMetricsCollector : MetricsCollector
     {
-        protected override void Emit(PointData[] points)
+        protected override void Emit(IPointData[] points)
         {
         }
 
-        protected override void Emit(PointData point)
+        protected override void Emit(IPointData point)
         {
         }
     }

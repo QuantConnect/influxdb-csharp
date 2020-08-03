@@ -4,6 +4,7 @@ using System.IO.Compression;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using InfluxDB.Collector.Pipeline;
 using InfluxDB.LineProtocol.Payload;
 using RichardSzalay.MockHttp;
 using Xunit;
@@ -19,7 +20,7 @@ namespace InfluxDB.LineProtocol.Tests.Client
 
             var payload = new LineProtocolPayload();
 
-            payload.Add(new LineProtocolPoint("bar", new Dictionary<string, object> { { "baz", 42 } }));
+            payload.Add(new PointData("bar", new[] { new KeyValuePair<string, object>("baz", 42) }));
 
             client.Handler
                 .Expect($"{client.BaseAddress}write?db=foo")
@@ -38,7 +39,7 @@ namespace InfluxDB.LineProtocol.Tests.Client
 
             var payload = new LineProtocolPayload();
 
-            payload.Add(new LineProtocolPoint("bar", new Dictionary<string, object> { { "baz", 42 } }));
+            payload.Add(new PointData("bar", new[] { new KeyValuePair<string, object>("baz", 42) }));
 
             client.Handler
                 .Expect($"{client.BaseAddress}write?db=foo")

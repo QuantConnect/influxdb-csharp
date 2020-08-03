@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
+using InfluxDB.LineProtocol.Payload;
 
 namespace InfluxDB.Collector.Pipeline.Enrich
 {
@@ -11,14 +13,10 @@ namespace InfluxDB.Collector.Pipeline.Enrich
             _tags = tags;
         }
 
-        public void Enrich(PointData point)
+        public void Enrich(IPointData point)
         {
-            point.Tags = point.Tags ?? new Dictionary<string, string>();
-            foreach (var tag in _tags)
-            {
-                if (!point.Tags.ContainsKey(tag.Key))
-                    point.Tags.Add(tag.Key, tag.Value);
-            }
+            var tags = point.Tags ?? new KeyValuePair<string, string>[0];
+            point.Tags = tags.Concat(_tags.Where(pair => !tags.Contains(pair))).ToArray();
         }
     }
 }

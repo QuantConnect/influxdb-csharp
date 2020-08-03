@@ -9,9 +9,9 @@ namespace InfluxDB.Collector
         readonly Stopwatch _stopwatch = new Stopwatch();
         readonly MetricsCollector _collector;
         readonly string _measurement;
-        readonly Dictionary<string, string> _tags;
+        readonly KeyValuePair<string, string>[] _tags;
 
-        public StopwatchTimer(MetricsCollector collector, string measurement, Dictionary<string, string> tags = null)
+        public StopwatchTimer(MetricsCollector collector, string measurement, KeyValuePair<string, string>[] tags = null)
         {
             _collector = collector;
             _measurement = measurement;

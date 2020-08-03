@@ -1,19 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
+using InfluxDB.LineProtocol.Payload;
 
 namespace InfluxDB.Collector.Pipeline
 {
-    public class PointData
+    public class PointData : IPointData
     {
         public string Measurement { get; }
-        public Dictionary<string, object> Fields { get; }
-        public Dictionary<string, string> Tags { get; set; }
+
         public DateTime? UtcTimestamp { get; }
+
+        public KeyValuePair<string, string>[] Tags { get; set; }
+
+        public KeyValuePair<string, object>[] Fields { get; }
 
         public PointData(
             string measurement,
-            Dictionary<string, object> fields,
-            Dictionary<string, string> tags = null,
+            KeyValuePair<string, object>[] fields,
+            KeyValuePair<string, string>[] tags = null,
             DateTime? utcTimestamp = null)
         {
             if (measurement == null) throw new ArgumentNullException(nameof(measurement));

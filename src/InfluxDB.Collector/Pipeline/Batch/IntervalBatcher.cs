@@ -4,6 +4,7 @@ using System.Linq;
 using InfluxDB.Collector.Diagnostics;
 using InfluxDB.Collector.Platform;
 using InfluxDB.Collector.Util;
+using InfluxDB.LineProtocol.Payload;
 
 namespace InfluxDB.Collector.Pipeline.Batch
 {
@@ -14,14 +15,14 @@ namespace InfluxDB.Collector.Pipeline.Batch
         readonly int? _maxBatchSize;
         readonly PortableTimer _timer;
         readonly IPointEmitter _parent;
-        private volatile Queue<PointData> _queue;
+        private volatile Queue<IPointData> _queue;
 
         public IntervalBatcher(TimeSpan interval, int? maxBatchSize, IPointEmitter parent)
         {
             _parent = parent;
             _queueLock = new object();
             _maxBatchSize = maxBatchSize;
-            _queue = new Queue<PointData>();
+            _queue = new Queue<IPointData>();
             _timer = new PortableTimer(cancel => OnTick(), interval);
         }
 
@@ -51,8 +52,8 @@ namespace InfluxDB.Collector.Pipeline.Batch
                 int count;
                 do
                 {
-                    var newQueue = new Queue<PointData>();
-                    Queue<PointData> batch;
+                    var newQueue = new Queue<IPointData>();
+                    Queue<IPointData> batch;
                     lock (_queueLock)
                     {
                         if (_queue.Count == 0)
@@ -92,16 +93,18 @@ namespace InfluxDB.Collector.Pipeline.Batch
             }
         }
 
-        public void Emit(PointData[] points)
+        public void Emit(IPointData[] points)
         {
             lock (_queueLock)
             {
-                foreach (var point in points)
-                    _queue.Enqueue(point);
+                for (var i = 0; i < points.Length; i++)
+                {
+                    _queue.Enqueue(points[i]);
+                }
             }
         }
 
-        public void Emit(PointData point)
+        public void Emit(IPointData point)
         {
             lock (_queueLock)
             {

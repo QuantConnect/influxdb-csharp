@@ -1,5 +1,5 @@
 ﻿using System;
-using InfluxDB.Collector.Pipeline;
+using InfluxDB.LineProtocol.Payload;
 
 namespace InfluxDB.Collector.Configuration
 {
@@ -12,6 +12,6 @@ namespace InfluxDB.Collector.Configuration
             return InfluxDB(new Uri(serverBaseAddress), database, username, password, enableCompression, retentionPolicy);
         }
 
-        public abstract CollectorConfiguration Emitter(Action<PointData[]> emitter);
+        public abstract CollectorConfiguration Emitter(Action<IPointData[]> emitter);
     }
 }

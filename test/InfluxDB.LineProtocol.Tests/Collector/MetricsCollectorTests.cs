@@ -5,6 +5,7 @@ using InfluxDB.Collector.Pipeline;
 using Xunit;
 using System;
 using System.Threading.Tasks;
+using InfluxDB.LineProtocol.Payload;
 
 namespace InfluxDB.LineProtocol.Tests.Collector
 {
@@ -22,7 +23,7 @@ namespace InfluxDB.LineProtocol.Tests.Collector
         [Fact]
         public void SpecializedCollectorsCanBeCreated()
         {
-            var points = new List<PointData>();
+            var points = new List<IPointData>();
 
             var collector = new CollectorConfiguration()
                 .WriteTo.Emitter(pts => points.AddRange(pts))

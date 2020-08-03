@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using InfluxDB.Collector.Diagnostics;
 using InfluxDB.Collector.Pipeline;
+using InfluxDB.LineProtocol.Payload;
 
 namespace InfluxDB.Collector
 {
@@ -9,17 +10,17 @@ namespace InfluxDB.Collector
     {
         readonly Util.ITimestampSource _timestampSource = new Util.PseudoHighResTimestampSource();
 
-        public void Increment(string measurement, long count = 1, Dictionary<string, string> tags = null)
+        public void Increment(string measurement, long count = 1, KeyValuePair<string, string>[] tags = null)
         {
-            Write(measurement, new Dictionary<string, object> { { "count", count } }, tags);
+            Write(measurement, new[] { new KeyValuePair<string, object>("count", count) }, tags);
         }
 
-        public void Measure(string measurement, object value, Dictionary<string, string> tags = null)
+        public void Measure(string measurement, object value, KeyValuePair<string, string>[] tags = null)
         {
-            Write(measurement, new Dictionary<string, object> { { "value", value } }, tags);
+            Write(measurement, new[] { new KeyValuePair<string, object>("value", value) }, tags);
         }
 
-        public IDisposable Time(string measurement, Dictionary<string, string> tags = null)
+        public IDisposable Time(string measurement, KeyValuePair<string, string>[] tags = null)
         {
             return new StopwatchTimer(this, measurement, tags);
         }
@@ -36,7 +37,7 @@ namespace InfluxDB.Collector
 
         protected virtual void Dispose(bool disposing) { }
 
-        public void Write(string measurement, Dictionary<string, object> fields, Dictionary<string, string> tags = null, DateTime? timestamp = null)
+        public void Write(string measurement, KeyValuePair<string, object>[] fields, KeyValuePair<string, string>[] tags = null, DateTime? timestamp = null)
         {
             try
             {
@@ -49,17 +50,17 @@ namespace InfluxDB.Collector
             }
         }
 
-        void IPointEmitter.Emit(PointData[] points)
+        void IPointEmitter.Emit(IPointData[] points)
         {
             Emit(points);
         }
 
-        void IPointEmitter.Emit(PointData point)
+        void IPointEmitter.Emit(IPointData point)
         {
             Emit(point);
         }
 
-        protected abstract void Emit(PointData[] points);
-        protected abstract void Emit(PointData point);
+        protected abstract void Emit(IPointData[] points);
+        protected abstract void Emit(IPointData point);
     }
 }

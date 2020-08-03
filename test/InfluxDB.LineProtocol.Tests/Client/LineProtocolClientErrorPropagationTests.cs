@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
+using InfluxDB.Collector.Pipeline;
 using InfluxDB.LineProtocol.Payload;
 using RichardSzalay.MockHttp;
 using Xunit;
@@ -19,19 +20,19 @@ namespace InfluxDB.LineProtocol.Tests.Client
 
             var payload = new LineProtocolPayload();
 
-            payload.Add(new LineProtocolPoint(
+            payload.Add(new PointData(
                 "tobeornottobe",
-                new Dictionary<string, object>
+                new[]
                 {
-                    {"booleanonly", true}
+                    new KeyValuePair<string, object>("booleanonly", true)
                 }
             ));
 
-            payload.Add(new LineProtocolPoint(
+            payload.Add(new PointData(
                 "tobeornottobe",
-                new Dictionary<string, object>
+                new[]
                 {
-                    {"booleanonly", 5f}
+                    new KeyValuePair<string, object>("booleanonly", 5f)
                 }
             ));
 
@@ -54,11 +55,11 @@ namespace InfluxDB.LineProtocol.Tests.Client
 
             var payload = new LineProtocolPayload();
 
-            payload.Add(new LineProtocolPoint(
+            payload.Add(new PointData(
                 "liters",
-                new Dictionary<string, object>
+                new[]
                 {
-                    {"value", 10}
+                    new KeyValuePair<string, object>("value", 10)
                 }
             ));
 

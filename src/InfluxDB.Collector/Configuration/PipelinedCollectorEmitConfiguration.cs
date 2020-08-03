@@ -4,13 +4,14 @@ using System.Collections.Generic;
 using System.Linq;
 using InfluxDB.Collector.Pipeline;
 using InfluxDB.Collector.Pipeline.Emit;
+using InfluxDB.LineProtocol.Payload;
 
 namespace InfluxDB.Collector.Configuration
 {
     class PipelinedCollectorEmitConfiguration : CollectorEmitConfiguration
     {
         readonly CollectorConfiguration _configuration;
-        readonly List<Action<PointData[]>> _emitters = new List<Action<PointData[]>>();
+        readonly List<Action<IPointData[]>> _emitters = new List<Action<IPointData[]>>();
         private ILineProtocolClient _client;
 
         public PipelinedCollectorEmitConfiguration(
@@ -29,7 +30,7 @@ namespace InfluxDB.Collector.Configuration
             return _configuration;
         }
 
-        public override CollectorConfiguration Emitter(Action<PointData[]> emitter)
+        public override CollectorConfiguration Emitter(Action<IPointData[]> emitter)
         {
             if (emitter == null) throw new ArgumentNullException(nameof(emitter));
             _emitters.Add(emitter);

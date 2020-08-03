@@ -12,5 +12,8 @@ namespace InfluxDB.LineProtocol.Client
         Task<LineProtocolWriteResult> WriteAsync(
             LineProtocolPayload payload, 
             CancellationToken cancellationToken = default(CancellationToken));
+        Task<LineProtocolWriteResult> WriteAsync(
+            string payload,
+            CancellationToken cancellationToken = default(CancellationToken));
     }
 }

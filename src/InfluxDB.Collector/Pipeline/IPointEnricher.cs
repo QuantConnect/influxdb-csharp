@@ -1,7 +1,9 @@
-﻿namespace InfluxDB.Collector.Pipeline
+﻿using InfluxDB.LineProtocol.Payload;
+
+namespace InfluxDB.Collector.Pipeline
 {
     interface IPointEnricher
     {
-        void Enrich(PointData pointData);
+        void Enrich(IPointData pointData);
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using InfluxDB.Collector.Diagnostics;
 using InfluxDB.LineProtocol.Client;
 using InfluxDB.LineProtocol.Payload;
@@ -20,11 +21,9 @@ namespace InfluxDB.Collector.Pipeline.Emit
              // This needs to ensure outstanding operations have completed
         }
 
-        public void Emit(IPointData[] points)
+        public void Emit(List<IPointData> points)
         {
-            var payload = new LineProtocolPayload(points);
-
-            var influxResult = _client.WriteAsync(payload).Result;
+            var influxResult = _client.WriteAsync(points);
             if (!influxResult.Success)
                 CollectorLog.ReportError(influxResult.ErrorMessage, null);
         }

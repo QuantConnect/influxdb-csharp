@@ -11,7 +11,7 @@ namespace InfluxDB.Collector.Configuration
     class PipelinedCollectorEmitConfiguration : CollectorEmitConfiguration
     {
         readonly CollectorConfiguration _configuration;
-        readonly List<Action<IPointData[]>> _emitters = new List<Action<IPointData[]>>();
+        readonly List<Action<List<IPointData>>> _emitters = new List<Action<List<IPointData>>>();
         private ILineProtocolClient _client;
 
         public PipelinedCollectorEmitConfiguration(
@@ -30,7 +30,7 @@ namespace InfluxDB.Collector.Configuration
             return _configuration;
         }
 
-        public override CollectorConfiguration Emitter(Action<IPointData[]> emitter)
+        public override CollectorConfiguration Emitter(Action<List<IPointData>> emitter)
         {
             if (emitter == null) throw new ArgumentNullException(nameof(emitter));
             _emitters.Add(emitter);

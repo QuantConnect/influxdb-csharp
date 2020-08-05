@@ -1,10 +1,11 @@
-﻿using InfluxDB.LineProtocol.Payload;
+﻿using System.Collections.Generic;
+using InfluxDB.LineProtocol.Payload;
 
 namespace InfluxDB.Collector.Pipeline
 {
     interface IPointEmitter
     {
-        void Emit(IPointData[] points);
+        void Emit(List<IPointData> points);
 
         void Emit(IPointData point);
     }

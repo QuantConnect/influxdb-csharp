@@ -1,6 +1,8 @@
 ﻿using InfluxDB.LineProtocol.Payload;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -8,6 +10,7 @@ namespace InfluxDB.LineProtocol.Client
 {
     public abstract class LineProtocolClientBase : ILineProtocolClient
     {
+        private Queue<StringBuilder> _stringBuilders;
         protected readonly string _database, _username, _password, _retentionPolicy;
 
         protected LineProtocolClientBase(Uri serverBaseAddress, string database, string username, string password, string retentionPolicy)
@@ -18,19 +21,24 @@ namespace InfluxDB.LineProtocol.Client
                 throw new ArgumentException("A database must be specified");
 
             // Overload that allows injecting handler is protected to avoid HttpMessageHandler being part of our public api which would force clients to reference System.Net.Http when using the lib.
-            _database = database;
-            _username = username;
-            _password = password;
-            _retentionPolicy = retentionPolicy;
+            _database = Uri.EscapeDataString(database);
+            _username = username == null ? null : Uri.EscapeDataString(username);
+            _password = password == null ? null : Uri.EscapeDataString(password);
+            _retentionPolicy = retentionPolicy == null ? null : Uri.EscapeDataString(retentionPolicy);
+            _stringBuilders = new Queue<StringBuilder>();
         }
 
-        public Task<LineProtocolWriteResult> WriteAsync(LineProtocolPayload payload, CancellationToken cancellationToken = default(CancellationToken))
+        public LineProtocolWriteResult WriteAsync(List<IPointData> points, CancellationToken cancellationToken = default(CancellationToken))
         {
-            var stringWriter = new StringWriter();
+            var stringBuilder = RentStringBuilder();
 
-            payload.Format(stringWriter);
+            var stringWriter = new StringWriter(stringBuilder);
+            LineProtocolPayload.Format(stringWriter, points);
+            var payload = stringWriter.ToString();
 
-            return WriteAsync(stringWriter.ToString(), cancellationToken);
+            ReturnStringBuilder(stringBuilder);
+
+            return WriteAsync(payload, cancellationToken).Result;
         }
 
         public Task<LineProtocolWriteResult> WriteAsync(string payload, CancellationToken cancellationToken = default(CancellationToken))
@@ -47,5 +55,32 @@ namespace InfluxDB.LineProtocol.Client
             string payload,
             Precision precision,
             CancellationToken cancellationToken = default(CancellationToken));
+
+        protected StringBuilder RentStringBuilder()
+        {
+            StringBuilder stringBuilder = null;
+            lock (_stringBuilders)
+            {
+                if (_stringBuilders.Count > 0)
+                {
+                    stringBuilder = _stringBuilders.Dequeue();
+                }
+            }
+            if (stringBuilder == null)
+            {
+                stringBuilder = new StringBuilder();
+            }
+
+            return stringBuilder;
+        }
+
+        protected void ReturnStringBuilder(StringBuilder stringBuilder)
+        {
+            stringBuilder.Clear();
+            lock (_stringBuilders)
+            {
+                _stringBuilders.Enqueue(stringBuilder);
+            }
+        }
     }
 }

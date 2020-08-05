@@ -18,16 +18,17 @@ namespace InfluxDB.LineProtocol.Tests.Client
         {
             var client = new MockLineProtocolClient("foo", false);
 
-            var payload = new LineProtocolPayload();
-
-            payload.Add(new PointData("bar", new[] { new KeyValuePair<string, object>("baz", 42) }));
+            var payload = new List<IPointData>
+            {
+                new PointData("bar", new[] {new KeyValuePair<string, object>("baz", 42)})
+            };
 
             client.Handler
                 .Expect($"{client.BaseAddress}write?db=foo")
                 .WithContent("bar baz=42i\n")
                 .Respond(HttpStatusCode.NoContent);
 
-            var result = await client.WriteAsync(payload);
+            var result = client.WriteAsync(payload);
 
             Assert.True(result.Success);
         }
@@ -37,9 +38,10 @@ namespace InfluxDB.LineProtocol.Tests.Client
         {
             var client = new MockLineProtocolClient("foo", true);
 
-            var payload = new LineProtocolPayload();
-
-            payload.Add(new PointData("bar", new[] { new KeyValuePair<string, object>("baz", 42) }));
+            var payload = new List<IPointData>
+            {
+                new PointData("bar", new[] {new KeyValuePair<string, object>("baz", 42)})
+            };
 
             client.Handler
                 .Expect($"{client.BaseAddress}write?db=foo")
@@ -53,7 +55,7 @@ namespace InfluxDB.LineProtocol.Tests.Client
                 })
                 .Respond(HttpStatusCode.NoContent);
 
-            var result = await client.WriteAsync(payload);
+            var result = client.WriteAsync(payload);
 
             Assert.True(result.Success);
         }

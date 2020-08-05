@@ -1,5 +1,6 @@
 ﻿
 using System;
+using System.Collections.Generic;
 using InfluxDB.LineProtocol.Payload;
 
 namespace InfluxDB.Collector.Pipeline
@@ -17,7 +18,7 @@ namespace InfluxDB.Collector.Pipeline
             _dispose = dispose;
         }
 
-        protected override void Emit(IPointData[] points)
+        protected override void Emit(List<IPointData> points)
         {
             if (_enricher != null)
             {

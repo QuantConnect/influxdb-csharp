@@ -18,7 +18,7 @@ namespace InfluxDB.LineProtocol.Tests.Client
         {
             var client = new MockLineProtocolClient("hamlet");
 
-            var payload = new LineProtocolPayload();
+            var payload = new List<IPointData>();
 
             payload.Add(new PointData(
                 "tobeornottobe",
@@ -39,7 +39,7 @@ namespace InfluxDB.LineProtocol.Tests.Client
             client.Handler.Expect($"{client.BaseAddress}write?db=hamlet")
                 .Respond(HttpStatusCode.BadRequest, "application/json", "{\"error\":\"field type conflict: input field \\\"booleanonly\\\" on measurement \\\"tobeornottobe\\\" is type float, already exists as type boolean dropped=1\"}");
 
-            var result = await client.WriteAsync(payload);
+            var result = client.WriteAsync(payload);
 
             Assert.False(result.Success);
             Assert.Equal("BadRequest Bad Request {\"error\":\"field type conflict: input field \\\"booleanonly\\\" on measurement \\\"tobeornottobe\\\" is type float, already exists as type boolean dropped=1\"}", result.ErrorMessage);
@@ -53,7 +53,7 @@ namespace InfluxDB.LineProtocol.Tests.Client
         {
             var client = new MockLineProtocolClient("atlantis");
 
-            var payload = new LineProtocolPayload();
+            var payload = new List<IPointData>();
 
             payload.Add(new PointData(
                 "liters",
@@ -66,7 +66,7 @@ namespace InfluxDB.LineProtocol.Tests.Client
             client.Handler.Expect($"{client.BaseAddress}write?db=atlantis")
                 .Respond(HttpStatusCode.NotFound, "application/json", "{\"error\":\"database not found: \\\"atlantis\\\"\"}");
 
-            var result = await client.WriteAsync(payload);
+            var result = client.WriteAsync(payload);
 
             Assert.False(result.Success);
             Assert.Equal("NotFound Not Found {\"error\":\"database not found: \\\"atlantis\\\"\"}", result.ErrorMessage);

@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using InfluxDB.Collector.Diagnostics;
 using InfluxDB.Collector.Platform;
-using InfluxDB.Collector.Util;
 using InfluxDB.LineProtocol.Payload;
 
 namespace InfluxDB.Collector.Pipeline.Batch
@@ -11,33 +9,38 @@ namespace InfluxDB.Collector.Pipeline.Batch
     class IntervalBatcher : IPointEmitter, IDisposable
     {
         bool _unloading;
-        object _queueLock;
-        readonly int? _maxBatchSize;
+        readonly int _maxBatchSize;
         readonly PortableTimer _timer;
         readonly IPointEmitter _parent;
+        private object _queueLock;
+        private List<List<IPointData>> _pool;
         private volatile Queue<IPointData> _queue;
 
         public IntervalBatcher(TimeSpan interval, int? maxBatchSize, IPointEmitter parent)
         {
+            var emitters = 4;
             _parent = parent;
             _queueLock = new object();
-            _maxBatchSize = maxBatchSize;
+            _maxBatchSize = maxBatchSize ?? 5000;
+            _pool = new List<List<IPointData>>();
+            for (var i = 0; i < emitters; i++)
+            {
+                // we create a buffer for each emitter
+                _pool.Add(new List<IPointData>(_maxBatchSize));
+            }
             _queue = new Queue<IPointData>();
-            _timer = new PortableTimer(cancel => OnTick(), interval);
+            _timer = new PortableTimer(OnTick, interval, emittersCount: emitters);
         }
 
         void CloseAndFlush()
         {
-            lock (_queueLock)
-            {
-                if (_unloading)
-                    return;
-                _unloading = true;
-            }
+            if (_unloading)
+                return;
+            _unloading = true;
 
             _timer.Dispose();
 
-            OnTick();
+            OnTick(-1);
         }
 
         public void Dispose()
@@ -45,47 +48,39 @@ namespace InfluxDB.Collector.Pipeline.Batch
             CloseAndFlush();
         }
 
-        void OnTick()
+        void OnTick(int id)
         {
             try
             {
                 int count;
+                Queue<IPointData> queue;
+                lock (_queueLock)
+                {
+                    count = _queue.Count;
+                    if (count == 0)
+                    {
+                        // short cut
+                        return;
+                    }
+                    queue = _queue;
+                    _queue = new Queue<IPointData>();
+                }
+
+                if (count > _maxBatchSize * 1000)
+                {
+                    CollectorLog.ReportError($"InfluxDB.IntervalBatcher(): OnTick() Batch.Count: {count} lagging", null);
+                }
+
+                var batch = id != -1 ? _pool[id] : new List<IPointData>();
                 do
                 {
-                    var newQueue = new Queue<IPointData>();
-                    Queue<IPointData> batch;
-                    lock (_queueLock)
+                    for (var i = 0; i < queue.Count && i < _maxBatchSize; i++)
                     {
-                        if (_queue.Count == 0)
-                        {
-                            // short cut
-                            return;
-                        }
-
-                        batch = _queue;
-                        _queue = newQueue;
+                        batch.Add(queue.Dequeue());
                     }
-
-                    if (_maxBatchSize != null && batch.Count > _maxBatchSize * 1000)
-                    {
-                        CollectorLog.ReportError($"InfluxDB.IntervalBatcher(): OnTick() Batch.Count: {batch.Count} lagging", null);
-                    }
-
-                    if (_maxBatchSize == null || batch.Count <= _maxBatchSize.Value)
-                    {
-                        _parent.Emit(batch.ToArray());
-                    }
-                    else
-                    {
-                        batch.Batch(_maxBatchSize.Value, _parent.Emit);
-                    }
-
-                    lock (_queueLock)
-                    {
-                        count = _queue.Count;
-                    }
-                    // if there is enough work let's directly loop again
-                } while (_maxBatchSize.HasValue && count >= _maxBatchSize.Value);
+                    _parent.Emit(batch);
+                    batch.Clear();
+                } while (queue.Count > 0);
             }
             catch (Exception ex)
             {
@@ -93,11 +88,11 @@ namespace InfluxDB.Collector.Pipeline.Batch
             }
         }
 
-        public void Emit(IPointData[] points)
+        public void Emit(List<IPointData> points)
         {
             lock (_queueLock)
             {
-                for (var i = 0; i < points.Length; i++)
+                for (var i = 0; i < points.Count; i++)
                 {
                     _queue.Enqueue(points[i]);
                 }
@@ -106,7 +101,7 @@ namespace InfluxDB.Collector.Pipeline.Batch
 
         public void Emit(IPointData point)
         {
-            lock (_queueLock)
+            lock(_queueLock)
             {
                 _queue.Enqueue(point);
             }

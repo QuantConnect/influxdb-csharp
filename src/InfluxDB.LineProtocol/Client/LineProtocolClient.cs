@@ -44,12 +44,22 @@ namespace InfluxDB.LineProtocol.Client
             Precision precision,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var stringBuilder = new StringBuilder(50);
-            stringBuilder.Append($"write?db={Uri.EscapeDataString(_database)}");
+            var stringBuilder = RentStringBuilder();
+
+            stringBuilder.Append("write?db=");
+            stringBuilder.Append(_database);
             if (!string.IsNullOrWhiteSpace(_retentionPolicy))
-                stringBuilder.Append($"&rp={Uri.EscapeDataString(_retentionPolicy)}");
+            {
+                stringBuilder.Append("&rp=");
+                stringBuilder.Append(_retentionPolicy);
+            }
             if (!string.IsNullOrEmpty(_username))
-                stringBuilder.Append($"&u={Uri.EscapeDataString(_username)}&p={Uri.EscapeDataString(_password)}");
+            {
+                stringBuilder.Append("&u=");
+                stringBuilder.Append(_username);
+                stringBuilder.Append("&p=");
+                stringBuilder.Append(_password);
+            }
 
             switch (precision)
             {
@@ -70,6 +80,7 @@ namespace InfluxDB.LineProtocol.Client
                     break;
             }
             var endpoint = stringBuilder.ToString();
+            ReturnStringBuilder(stringBuilder);
 
             HttpContent content;
 

@@ -50,7 +50,7 @@ namespace InfluxDB.Collector
             }
         }
 
-        void IPointEmitter.Emit(IPointData[] points)
+        void IPointEmitter.Emit(List<IPointData> points)
         {
             Emit(points);
         }
@@ -60,7 +60,7 @@ namespace InfluxDB.Collector
             Emit(point);
         }
 
-        protected abstract void Emit(IPointData[] points);
+        protected abstract void Emit(List<IPointData> points);
         protected abstract void Emit(IPointData point);
     }
 }

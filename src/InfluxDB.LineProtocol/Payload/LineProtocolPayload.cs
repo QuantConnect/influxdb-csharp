@@ -7,54 +7,65 @@ namespace InfluxDB.LineProtocol.Payload
 {
     public class LineProtocolPayload
     {
-        IPointData[] _points;
+        List<IPointData> _points;
 
         public LineProtocolPayload(IEnumerable<IPointData> points = null)
         {
-            _points = (points ?? Enumerable.Empty<IPointData>()).ToArray();
-        }
-        public LineProtocolPayload(IPointData[] points)
-        {
-            _points = points;
+            _points = (points ?? Enumerable.Empty<IPointData>()).ToList();
         }
 
         public void Add(IPointData point)
         {
             if (point == null) throw new ArgumentNullException(nameof(point));
-            _points = _points.Concat(new []{ point }).ToArray();
+            _points = _points.Concat(new []{ point }).ToList();
         }
 
         public void Format(TextWriter textWriter)
         {
             if (textWriter == null) throw new ArgumentNullException(nameof(textWriter));
 
-            for (var i = 0; i < _points.Length; i++)
+            for (var i = 0; i < _points.Count; i++)
             {
                 FormatPoint(textWriter, _points[i]);
                 textWriter.Write('\n');
             }
         }
 
-        private void FormatPoint(TextWriter textWriter, IPointData pointData)
+        public static void Format(TextWriter textWriter, List<IPointData> points)
+        {
+            for (var i = 0; i < points.Count; i++)
+            {
+                FormatPoint(textWriter, points[i]);
+                textWriter.Write('\n');
+            }
+        }
+
+        private static void FormatPoint(TextWriter textWriter, IPointData pointData)
         {
             if (textWriter == null) throw new ArgumentNullException(nameof(textWriter));
 
             LineProtocolSyntax.EscapeName(pointData.Measurement, textWriter);
 
-            if (pointData.Tags != null)
+            if (pointData.Tags != null && pointData.Tags.Length > 0)
             {
-                var enumerable = pointData.Tags.Length == 1
-                    ? (IEnumerable<KeyValuePair<string, string>>)pointData.Tags
-                    : pointData.Tags.OrderBy(t => t.Key);
-
-                foreach (var t in enumerable)
+                if (pointData.Tags.Length == 1)
                 {
-                    if (string.IsNullOrEmpty(t.Key)) throw new ArgumentException("Tags must have non-empty names");
-
                     textWriter.Write(',');
-                    LineProtocolSyntax.EscapeName(t.Key, textWriter);
+                    LineProtocolSyntax.EscapeName(pointData.Tags[0].Key, textWriter);
                     textWriter.Write('=');
-                    LineProtocolSyntax.EscapeName(t.Value, textWriter);
+                    LineProtocolSyntax.EscapeName(pointData.Tags[0].Value, textWriter);
+                }
+                else
+                {
+                    foreach (var t in pointData.Tags.OrderBy(t => t.Key))
+                    {
+                        if (string.IsNullOrEmpty(t.Key)) throw new ArgumentException("Tags must have non-empty names");
+
+                        textWriter.Write(',');
+                        LineProtocolSyntax.EscapeName(t.Key, textWriter);
+                        textWriter.Write('=');
+                        LineProtocolSyntax.EscapeName(t.Value, textWriter);
+                    }
                 }
             }
 

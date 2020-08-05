@@ -26,9 +26,9 @@ namespace InfluxDB.Collector.Platform
         TimeSpan _interval;
         readonly List<Thread> _threads;
         readonly CancellationTokenSource _cancel;
-        readonly Action<CancellationToken> _onTick;
+        readonly Action<int> _onTick;
 
-        public PortableTimer(Action<CancellationToken> onTick, TimeSpan interval, int emittersCount = 4)
+        public PortableTimer(Action<int> onTick, TimeSpan interval, int emittersCount = 4)
         {
             _interval = interval;
             _cancel = new CancellationTokenSource();
@@ -37,12 +37,13 @@ namespace InfluxDB.Collector.Platform
 
             for (var i = 0; i < emittersCount; i++)
             {
-                _threads.Add(new Thread(OnTick) { IsBackground = true });
+                var myId = i;
+                _threads.Add(new Thread(() => OnTick(myId)) { IsBackground = true });
                 _threads[i].Start();
             }
         }
 
-        void OnTick()
+        void OnTick(int id)
         {
             while (!_cancel.IsCancellationRequested)
             {
@@ -51,7 +52,7 @@ namespace InfluxDB.Collector.Platform
                     Thread.Sleep(_interval);
                     if (!_cancel.IsCancellationRequested)
                     {
-                        _onTick(_cancel.Token);
+                        _onTick(id);
                     }
                 }
                 catch (OperationCanceledException tcx)

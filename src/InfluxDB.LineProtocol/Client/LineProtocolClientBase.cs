@@ -38,7 +38,18 @@ namespace InfluxDB.LineProtocol.Client
 
             ReturnStringBuilder(stringBuilder);
 
-            return WriteAsync(payload, cancellationToken).Result;
+            LineProtocolWriteResult result = default;
+            var eventComplete = new ManualResetEvent(false);
+
+            WriteAsync(payload, cancellationToken).ContinueWith(task =>
+            {
+                result = task.Result;
+                eventComplete.Set();
+            }, cancellationToken);
+
+            // avoid task.Wait which spins
+            eventComplete.WaitOne();
+            return result;
         }
 
         public Task<LineProtocolWriteResult> WriteAsync(string payload, CancellationToken cancellationToken = default(CancellationToken))

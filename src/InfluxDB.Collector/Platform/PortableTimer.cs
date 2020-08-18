@@ -61,7 +61,10 @@ namespace InfluxDB.Collector.Platform
                 }
                 catch (Exception exception)
                 {
-                    CollectorLog.ReportError("Unknown exception in timer", exception);
+                    if (!_cancel.IsCancellationRequested)
+                    {
+                        CollectorLog.ReportError("Unknown exception in timer", exception);
+                    }
                 }
             }
         }

@@ -110,7 +110,7 @@ namespace InfluxDB.LineProtocol.Client
                 body = await response.Content.ReadAsStringAsync();
             }
 
-            return new LineProtocolWriteResult(false, $"{response.StatusCode} {response.ReasonPhrase} {body}");
+            return new LineProtocolWriteResult(false, $"{response.StatusCode} {response.ReasonPhrase} {body}. Query: {(payload.Length > 400 ? payload.Substring(0, 400) : payload)}");
         }
 
         private byte[] Compress(byte[] input)

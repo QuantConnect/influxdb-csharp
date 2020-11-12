@@ -1,10 +1,5 @@
-﻿using InfluxDB.LineProtocol.Payload;
-using System;
-using System.IO;
-using System.Net;
-using System.Net.Http;
+﻿using System;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -35,11 +30,10 @@ namespace InfluxDB.LineProtocol.Client
         }
 
         protected override async Task<LineProtocolWriteResult> OnSendAsync(
-                                    string payload,
+                                    byte[] buffer,
                                     Precision precision,
                                     CancellationToken cancellationToken = default(CancellationToken))
         {
-            var buffer = Encoding.UTF8.GetBytes(payload);
             int len = await _udpClient.SendAsync(buffer, buffer.Length, _udpHostName, _udpPort);
             return new LineProtocolWriteResult(len == buffer.Length, null);
         }

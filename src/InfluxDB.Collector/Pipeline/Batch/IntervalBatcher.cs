@@ -14,19 +14,22 @@ namespace InfluxDB.Collector.Pipeline.Batch
         readonly IPointEmitter _parent;
         private object _queueLock;
         private List<List<IPointData>> _pool;
+        private List<Queue<IPointData>> _poolQueue;
         private volatile Queue<IPointData> _queue;
 
-        public IntervalBatcher(TimeSpan interval, int? maxBatchSize, IPointEmitter parent)
+        public IntervalBatcher(TimeSpan interval, int? maxBatchSize, int? workers, IPointEmitter parent)
         {
-            var emitters = 4;
+            var emitters = workers ?? 4;
             _parent = parent;
             _queueLock = new object();
             _maxBatchSize = maxBatchSize ?? 5000;
             _pool = new List<List<IPointData>>();
+            _poolQueue = new List<Queue<IPointData>>();
             for (var i = 0; i < emitters; i++)
             {
                 // we create a buffer for each emitter
                 _pool.Add(new List<IPointData>(_maxBatchSize));
+                _poolQueue.Add(new Queue<IPointData>());
             }
             _queue = new Queue<IPointData>();
             _timer = new PortableTimer(OnTick, interval, emittersCount: emitters);
@@ -63,7 +66,7 @@ namespace InfluxDB.Collector.Pipeline.Batch
                         return;
                     }
                     queue = _queue;
-                    _queue = new Queue<IPointData>();
+                    _queue = id != -1 ? _poolQueue[id] : new Queue<IPointData>();
                 }
 
                 if (count > _maxBatchSize * 1000)
@@ -81,6 +84,8 @@ namespace InfluxDB.Collector.Pipeline.Batch
                     _parent.Emit(batch);
                     batch.Clear();
                 } while (queue.Count > 0);
+
+                _poolQueue[id] = queue;
             }
             catch (Exception ex)
             {

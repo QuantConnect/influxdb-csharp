@@ -9,6 +9,6 @@ namespace InfluxDB.LineProtocol.Client
     {
         Task<LineProtocolWriteResult> SendAsync(LineProtocolWriter lineProtocolWriter, CancellationToken cancellationToken = default);
         LineProtocolWriteResult WriteAsync(List<IPointData> payload, CancellationToken cancellationToken = default);
-        Task<LineProtocolWriteResult> WriteAsync(string payload, CancellationToken cancellationToken = default);
+        Task<LineProtocolWriteResult> WriteAsync(byte[] payload, CancellationToken cancellationToken = default);
     }
 }

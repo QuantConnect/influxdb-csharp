@@ -40,11 +40,11 @@ namespace InfluxDB.LineProtocol.Client
         }
 
         protected override async Task<LineProtocolWriteResult> OnSendAsync(
-            string payload,
+            byte[] payload,
             Precision precision,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var stringBuilder = RentStringBuilder();
+            var stringBuilder = new StringBuilder();
 
             stringBuilder.Append("write?db=");
             stringBuilder.Append(_database);
@@ -80,13 +80,12 @@ namespace InfluxDB.LineProtocol.Client
                     break;
             }
             var endpoint = stringBuilder.ToString();
-            ReturnStringBuilder(stringBuilder);
 
             HttpContent content;
 
             if (_enableCompression)
             {
-                var compressed = Compress(Encoding.UTF8.GetBytes(payload));
+                var compressed = Compress(payload);
                 
                 content = new ByteArrayContent(compressed);
                 content.Headers.ContentEncoding.Add("gzip");
@@ -94,12 +93,13 @@ namespace InfluxDB.LineProtocol.Client
             }
             else
             {
-                content = new StringContent(payload, Encoding.UTF8);
+                content = new ByteArrayContent(payload);
             }
 
             var response = await _httpClient.PostAsync(endpoint, content, cancellationToken).ConfigureAwait(false);
             if (response.IsSuccessStatusCode)
             {
+                response.Dispose();
                 return new LineProtocolWriteResult(true, null);
             }
 
@@ -107,10 +107,13 @@ namespace InfluxDB.LineProtocol.Client
 
             if (response.Content != null)
             {
-                body = await response.Content.ReadAsStringAsync();
+                body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             }
 
-            return new LineProtocolWriteResult(false, $"{response.StatusCode} {response.ReasonPhrase} {body}. Query: {(payload.Length > 400 ? payload.Substring(0, 400) : payload)}");
+            var result = new LineProtocolWriteResult(false, $"{response.StatusCode} {response.ReasonPhrase} {body}");
+
+            response.Dispose();
+            return result;
         }
 
         private byte[] Compress(byte[] input)

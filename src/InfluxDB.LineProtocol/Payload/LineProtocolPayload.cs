@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 
@@ -79,7 +80,14 @@ namespace InfluxDB.LineProtocol.Payload
                 textWriter.Write(fieldDelim);
                 LineProtocolSyntax.EscapeName(kvp.Key, textWriter);
                 textWriter.Write('=');
-                textWriter.Write(LineProtocolSyntax.FormatValue(kvp.Value));
+                if (kvp.Value is decimal value)
+                {
+                    textWriter.Write(value.ToString(NumberFormatInfo.InvariantInfo));
+                }
+                else
+                {
+                    textWriter.Write(LineProtocolSyntax.FormatValue(kvp.Value));
+                }
 
                 fieldDelim = ',';
             }

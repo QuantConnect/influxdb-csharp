@@ -9,6 +9,7 @@ namespace InfluxDB.Collector.Configuration
         readonly CollectorConfiguration _configuration;
         TimeSpan? _interval;
         int? _maxBatchSize;
+        int? _workers;
 
         public PipelinedCollectorBatchConfiguration(CollectorConfiguration configuration)
         {
@@ -16,8 +17,9 @@ namespace InfluxDB.Collector.Configuration
             _configuration = configuration;
         }
 
-        public override CollectorConfiguration AtInterval(TimeSpan interval, int? maxBatchSize)
+        public override CollectorConfiguration AtInterval(TimeSpan interval, int? maxBatchSize, int? workers)
         {
+            _workers = workers;
             _interval = interval;
             _maxBatchSize = maxBatchSize;
             return _configuration;
@@ -31,7 +33,7 @@ namespace InfluxDB.Collector.Configuration
                 return parent;
             }
 
-            var batcher = new IntervalBatcher(_interval.Value, _maxBatchSize, parent);
+            var batcher = new IntervalBatcher(_interval.Value, _maxBatchSize, _workers, parent);
             dispose = batcher.Dispose;
             return batcher;
         }

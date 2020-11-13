@@ -6,8 +6,8 @@ namespace InfluxDB.Collector.Diagnostics
 {
     public static class CollectorLog
     {
-        private static readonly HashSet<Action<string, Exception>> ErrorHandlers = new HashSet<Action<string, Exception>>();
-        private static readonly object SyncRoot = new object();
+        private static readonly List<Action<string, Exception>> ErrorHandlers = new List<Action<string, Exception>>();
+        private static readonly List<Action<string>> TraceHandlers = new List<Action<string>>();
 
         /// <summary>
         /// Registers an error handler. Errors reported may not neccessarily always correspond with an exception. That is to say, when the callback is invoked, the exception may be null.
@@ -20,36 +20,76 @@ namespace InfluxDB.Collector.Diagnostics
         {
             if (errorHandler == null) throw new ArgumentNullException(nameof(errorHandler));
 
-            lock (SyncRoot)
+            lock (ErrorHandlers)
             {
                 ErrorHandlers.Add(errorHandler);
             }
 
             return new DisposableAction(() => 
             {
-                lock (SyncRoot) 
+                lock (ErrorHandlers)
                 {
                     ErrorHandlers.Remove(errorHandler);
                 }
             });
         }
 
+        /// <summary>
+        /// Registers a trace handler.
+        /// To unregister a handler, simply dispose of the IDisposable returned from this method
+        /// The order in which handlers are invoked is not defined
+        /// </summary>
+        /// <param name="traceHandler">A func accepting a string and an exception</param>
+        /// <returns>An IDispoable which when explicitly disposed, will unnregister the handler</returns>
+        public static IDisposable RegisterTraceHandler(Action<string> traceHandler)
+        {
+            if (traceHandler == null) throw new ArgumentNullException(nameof(traceHandler));
+
+            lock (TraceHandlers)
+            {
+                TraceHandlers.Add(traceHandler);
+            }
+
+            return new DisposableAction(() =>
+            {
+                lock (TraceHandlers)
+                {
+                    TraceHandlers.Remove(traceHandler);
+                }
+            });
+        }
+
         internal static void ReportError(string message, Exception exception)
         {
-            lock (SyncRoot)
+            lock (ErrorHandlers)
             {
-                foreach (var errorHandler in ErrorHandlers) 
+                for (var i = 0; i < ErrorHandlers.Count; i++)
                 {
-                    errorHandler(message, exception);
+                    ErrorHandlers[i](message, exception);
+                }
+            }
+        }
+
+        internal static void Report(string message)
+        {
+            lock (TraceHandlers)
+            {
+                for (var i = 0; i < TraceHandlers.Count; i++)
+                {
+                    TraceHandlers[i](message);
                 }
             }
         }
 
         internal static void ClearHandlers()
         {
-            lock (SyncRoot)
+            lock (ErrorHandlers)
             {
                 ErrorHandlers.Clear();
+            }
+            lock (TraceHandlers)
+            {
+                TraceHandlers.Clear();
             }
         }
     }

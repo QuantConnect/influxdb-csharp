@@ -5,12 +5,15 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.IO;
 
 namespace InfluxDB.LineProtocol.Client
 {
     public abstract class LineProtocolClientBase : ILineProtocolClient
     {
-        private Queue<StringBuilder> _stringBuilders;
+        private static RecyclableMemoryStreamManager MemoryManager = new RecyclableMemoryStreamManager();
+        [ThreadStatic] private static Guid _guid;
+
         protected readonly string _database, _username, _password, _retentionPolicy;
 
         protected LineProtocolClientBase(Uri serverBaseAddress, string database, string username, string password, string retentionPolicy)
@@ -25,73 +28,50 @@ namespace InfluxDB.LineProtocol.Client
             _username = username == null ? null : Uri.EscapeDataString(username);
             _password = password == null ? null : Uri.EscapeDataString(password);
             _retentionPolicy = retentionPolicy == null ? null : Uri.EscapeDataString(retentionPolicy);
-            _stringBuilders = new Queue<StringBuilder>();
         }
 
         public LineProtocolWriteResult WriteAsync(List<IPointData> points, CancellationToken cancellationToken = default(CancellationToken))
         {
-            var stringBuilder = RentStringBuilder();
-
-            var stringWriter = new StringWriter(stringBuilder);
-            LineProtocolPayload.Format(stringWriter, points);
-            var payload = stringWriter.ToString();
-
-            ReturnStringBuilder(stringBuilder);
-
-            LineProtocolWriteResult result = default;
-            var eventComplete = new ManualResetEvent(false);
-
-            WriteAsync(payload, cancellationToken).ContinueWith(task =>
+            if (_guid == default)
             {
-                result = task.Result;
-                eventComplete.Set();
-            }, cancellationToken);
+                // let's re use the guid per thread
+                _guid = new Guid();
+            }
 
-            // avoid task.Wait which spins
-            eventComplete.WaitOne();
-            return result;
+            using (var stream = MemoryManager.GetStream(_guid))
+            using (var writer = new StreamWriter(stream) { AutoFlush = false })
+            {
+                LineProtocolPayload.Format(writer, points);
+                writer.Flush();
+
+                LineProtocolWriteResult result = default;
+                var eventComplete = new ManualResetEvent(false);
+
+                WriteAsync(stream.ToArray(), cancellationToken).ContinueWith(task =>
+                {
+                    result = task.Result;
+                    eventComplete.Set();
+                }, cancellationToken);
+
+                // avoid task.Wait which spins
+                eventComplete.WaitOne();
+                return result;
+            }
         }
 
-        public Task<LineProtocolWriteResult> WriteAsync(string payload, CancellationToken cancellationToken = default(CancellationToken))
+        public Task<LineProtocolWriteResult> WriteAsync(byte[] payload, CancellationToken cancellationToken = default(CancellationToken))
         {
             return OnSendAsync(payload, Precision.Nanoseconds, cancellationToken);
         }
 
         public Task<LineProtocolWriteResult> SendAsync(LineProtocolWriter lineProtocolWriter, CancellationToken cancellationToken = default(CancellationToken))
         {
-            return OnSendAsync(lineProtocolWriter.ToString(), lineProtocolWriter.Precision, cancellationToken);
+            return OnSendAsync(Encoding.UTF8.GetBytes(lineProtocolWriter.ToString()), lineProtocolWriter.Precision, cancellationToken);
         }
 
         protected abstract Task<LineProtocolWriteResult> OnSendAsync(
-            string payload,
+            byte[] payload,
             Precision precision,
             CancellationToken cancellationToken = default(CancellationToken));
-
-        protected StringBuilder RentStringBuilder()
-        {
-            StringBuilder stringBuilder = null;
-            lock (_stringBuilders)
-            {
-                if (_stringBuilders.Count > 0)
-                {
-                    stringBuilder = _stringBuilders.Dequeue();
-                }
-            }
-            if (stringBuilder == null)
-            {
-                stringBuilder = new StringBuilder();
-            }
-
-            return stringBuilder;
-        }
-
-        protected void ReturnStringBuilder(StringBuilder stringBuilder)
-        {
-            stringBuilder.Clear();
-            lock (_stringBuilders)
-            {
-                _stringBuilders.Enqueue(stringBuilder);
-            }
-        }
     }
 }

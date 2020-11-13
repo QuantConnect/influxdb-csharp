@@ -81,5 +81,27 @@ namespace InfluxDB.LineProtocol.Tests
             Assert.Equal(expected, sw.ToString());
         }
 
+        [Fact]
+        public void Decimal()
+        {
+            var point = new LineProtocolPayload(new IPointData[]{ new PointData(
+                "pinocho",
+                new[]
+                {
+                    new KeyValuePair<string, object>("value", 1090213.0000m)
+                },
+                new[]
+                {
+                    new KeyValuePair<string, string>("symbol", "test")
+                },
+                new DateTime(2015, 9, 9, 0, 0, 0, DateTimeKind.Utc)) });
+
+            var sw = new StringWriter();
+            point.Format(sw);
+
+            var result = sw.ToString();
+
+            Assert.Equal("pinocho,symbol=test value=1090213.0000 1441756800000000000\n", sw.ToString());
+        }
     }
 }

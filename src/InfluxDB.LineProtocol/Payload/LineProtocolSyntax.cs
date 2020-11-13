@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Runtime.CompilerServices;
 
 namespace InfluxDB.LineProtocol.Payload
 {
@@ -26,6 +27,7 @@ namespace InfluxDB.LineProtocol.Payload
             { typeof(TimeSpan), FormatTimespan }
         };
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void EscapeName(string nameOrKey, TextWriter textWriter)
         {
             if (nameOrKey == null) throw new ArgumentNullException(nameof(nameOrKey));
@@ -84,10 +86,11 @@ namespace InfluxDB.LineProtocol.Payload
             return "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string FormatTimestamp(DateTime utcTimestamp)
         {
             var t = utcTimestamp - Origin;
-            return (t.Ticks * 100L).ToString(CultureInfo.InvariantCulture);
+            return (t.Ticks * 100L).ToString(NumberFormatInfo.InvariantInfo);
         }
     }
 }
